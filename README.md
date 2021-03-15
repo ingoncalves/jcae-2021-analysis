@@ -2,11 +2,17 @@
 
 Repositório para programas criados para as análises da *Dissertação de Mestrado s.s. em Modelagem Computacional - UERJ/IPRJ*.
 
+## Setup Python Environment
+
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+
 ## Executar código
 
 Para executar o código em Python, basta rodar
 
-    python -m analysis
+    python -m analysis cases/moderate_occupancy/setup.yml
 
 
 >**Autor:** Guilherme Inácio Gonçalves <ggoncalves@iprj.uerj.br><br/>

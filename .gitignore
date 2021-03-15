@@ -66,3 +66,4 @@ __pycache__/
 out/
 !out/.gitkeep
 .DS_Store
+.venv

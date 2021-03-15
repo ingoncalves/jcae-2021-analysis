@@ -20,6 +20,7 @@ limitations under the License.
 """
 
 import numpy as np
+from progress.bar import Bar
 
 
 class DatasetGenerator():
@@ -38,6 +39,8 @@ class DatasetGenerator():
         amplitudes = np.zeros(n_events)
         bunch_interval = int(sampling_rate / self.pulse_shape.resolution)
 
+        progress_bar = Bar('Generating dataset', max=int(n_events/bunch_interval), suffix='%(percent).1f%% - %(eta)ds')
+
         for i in range(0, n_events, bunch_interval):
             signal_occurency_probability = np.random.uniform()
             if signal_occurency_probability < occupancy:
@@ -54,7 +57,9 @@ class DatasetGenerator():
                         continue
 
                     samples[i + offset] += pulse_sample
+            progress_bar.next()
 
+        progress_bar.finish()
         return (samples, amplitudes)
 
     def generate_windowed_samples(self, window_size, sampling_rate, n_events, occupancy):
