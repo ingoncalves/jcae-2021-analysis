@@ -31,22 +31,22 @@ def main():
     window_size = 7
     n_samples = 1000
     sampling_rate = 25.0
-    pileup_occupancy = 0.0
+    pileup_occupancy = 0.5
     pileup_luminosity = 100.0
+    noise_mean = 1.5
     noise_std = 1.5
     deformation_level = 0
 
     # generate pulse
-    # shape_path = "/Users/guilherme/Downloads/TileCalorimeter_TileConditions_share_pulselo_physics.dat"
     shape_path = "shared/cern-atlas-tilecalorimeter-pulse-shape.dat"
     pulse_shape = PulseShape(shape_path)
     pulse_generator = PulseGenerator(pulse_shape)
     pulse_generator.set_deformation_level(deformation_level)
+    pulse_generator.set_noise_params(noise_mean, noise_std)
 
     # setup dataset
     pulse_generator.set_amplitude_generator(np.random.exponential, (pileup_luminosity,))
     dataset_generator = DatasetGenerator(pulse_generator)
-    dataset_generator.set_noise_params(0.0, noise_std)
     samples, _ = dataset_generator.generate_windowed_samples(window_size, sampling_rate, n_samples, pileup_occupancy)
 
     first_samples = [row[0] for row in samples]

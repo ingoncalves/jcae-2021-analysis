@@ -19,6 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import textwrap
 import numpy as np
 
 class PulseShape():
@@ -49,3 +50,12 @@ class PulseShape():
         self.time = input_data[:, 0]
         self.time_origin_index = int(np.where(self.time == .0)[0][0])
         self.resolution = self.time[1] - self.time[0]
+
+    def __str__(self):
+        return textwrap.dedent(f"""\
+          PulseShape:
+            resolution = {self.resolution}
+            shape_path = {self.shape_path}
+            size = {self.size}
+            time_origin_index = {self.time_origin_index}\
+        """)

@@ -26,6 +26,7 @@ class DatasetGenerator():
     """ Dataset generator """
 
     def __init__(self, pulse_generator):
+        """ Default constructor """
         self.pulse_generator = pulse_generator
         self.pulse_shape = pulse_generator.pulse_shape
 

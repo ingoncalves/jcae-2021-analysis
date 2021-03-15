@@ -19,6 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import textwrap
 import numpy as np
 from .analog_pulse import AnalogPulse
 
@@ -126,3 +127,16 @@ class PulseGenerator():
             self.phase_generator = random_function
         if random_function_args is not None:
             self.phase_generator_args = random_function_args
+
+    def __str__(self):
+        return textwrap.dedent(f"""\
+          PulseGenerator:
+            amplitude_generator = {self.amplitude_generator}
+            amplitude_generator_args = {self.amplitude_generator_args}
+            deformation_level = {self.deformation_level}
+            noise_mean = {self.noise_mean}
+            noise_sigma = {self.noise_sigma}
+            pedestal = {self.pedestal}
+            phase_generator = {self.phase_generator}
+            phase_generator_args = {self.phase_generator_args}\
+        """)

@@ -22,37 +22,44 @@ import sys
 import os
 import logging
 import time
-from .jobs import compare_filters
-
-logging.basicConfig(
-    format='%(asctime)s %(process)s %(levelname)s %(name)s %(message)s',
-    level=logging.DEBUG,
-)
+from .utils import read_yaml_file
+from .tasks import generate_dataset_task
 
 
 def main():
     """
     main function
     """
-    start_time = time.time()
-    logging.info('Starting analysis')
 
     input_file = sys.argv[1]
-    logging.info("Input: %s", input_file)
-
-    output_file = None
-    if len(sys.argv) > 2:
-        output_file = sys.argv[2]
 
     if not os.path.exists(input_file):
-        logging.error("Input file does not exist")
+        print("Input file does not exist")
         sys.exit(1)
 
-    result = compare_filters(input_file, output_file)
+    output_path = os.path.dirname(os.path.abspath(input_file))
+
+    logging.basicConfig(
+        format='%(asctime)s %(process)s %(levelname)s %(name)s %(message)s',
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler(output_path + '/debug.log'),
+            logging.StreamHandler()
+        ]
+    )
+
+    logging.info('Starting analysis')
+    start_time = time.time()
+
+    logging.info("Input: %s", input_file)
+    logging.info("Output: %s", output_path)
+
+    _, yml = read_yaml_file(input_file)
+    generate_dataset_task(yml, output_path, logging)
 
     elapsed_time = time.time() - start_time
-    logging.info("Analysis finished after %d seconds", elapsed_time)
-    logging.info("Output: %s", result)
+    logging.info("Task finished after %d seconds", elapsed_time)
+
     sys.exit(0)
 
 
