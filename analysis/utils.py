@@ -19,21 +19,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import os
 import logging
-import json
-import numpy as np
 import yaml
-
-
-def print_matrix(matrix, precision=2):
-    """ prints a numpy matrix """
-    np.set_printoptions(precision=precision)
-    for row in matrix:
-        for cell in row:
-            print("{0:0.2f}".format(cell), end=" ")
-        print("")
-
 
 def read_yaml_file(filepath):
     """ reads and parse an yaml file """
@@ -46,13 +33,3 @@ def read_yaml_file(filepath):
         except yaml.YAMLError as exc:
             logging.error(exc)
     return success, data
-
-
-def get_file_name(filepath):
-    """ get filename without path and extension """
-    return os.path.splitext(os.path.basename(filepath))[0]
-
-def write_json_file(filepath, data):
-    """ parses and writes data to json file """
-    with open(filepath, "w") as file:
-        json.dump(data, file, indent=4)

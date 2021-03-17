@@ -67,3 +67,6 @@ out/
 !out/.gitkeep
 .DS_Store
 .venv
+
+dataset*.csv
+results*.csv

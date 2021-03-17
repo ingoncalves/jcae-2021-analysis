@@ -19,177 +19,115 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import textwrap
+import csv
+import os
 import numpy as np
-from ..filters import OF2, COF, Wiener, Sparse, SparseCOF
-from ..generator import DatasetGenerator, PulseGenerator
+from ..filters import OF2, COF, Wiener
+from ..generator import PulseShape, PulseGenerator
 
 
-class CompareJob():
+class CompareFiltersTask():
     """ Compare Job """
 
-    def __init__(self, params, log):
-        self.params = params
-        self.log = log
+    def __init__(self, yml, output_path, logging):
+        self.yml = yml
+        self.output_path = output_path
+        self.logging = logging
+        self.output_file = self.output_path + "/results.csv"
+        self.pulse_shape = None
+        self.pulse_generator = None
+        self.train_dataset = None
+        self.test_dataset = None
+        self.filters = None
+        self.results_buffer = None
 
     def perform(self):
-        """
-        perform
-        """
-        log = self.log
-        params = self.params
+        """ perform """
 
-        pileup_occupancy = params["pileup_occupancy"]
-        signal_pileup_ratio = params["signal_pileup_ratio"]
+        self.__read_dataset()
+        self.__setup_pulse_shape()
+        self.__setup_pulse_simulator()
+        self.__setup_filters()
+        self.__start_performance_test()
+        self.__build_results()
 
-        # pileup_luminosity = params["pileup_luminosity"]
-        # signal_luminosity = pileup_luminosity * signal_pileup_ratio
+    def __read_dataset(self):
+        dataset_file = self.output_path + "/dataset.csv"
+        if not os.path.exists(dataset_file):
+            raise "Dataset file does not exist"
 
-        signal_luminosity = params["pileup_luminosity"]
-        pileup_luminosity = signal_luminosity / signal_pileup_ratio
+        dataset = np.loadtxt(dataset_file)
+        [self.train_dataset, self.test_dataset] = np.split(dataset, 2)
 
-        n_events = params["n_events"]
+        self.logging.info(textwrap.dedent(f"""\
+          Dataset loaded:
+            {dataset_file}\
+        """))
 
-        init_message = f"Processing"
-        init_message += f" pileup_luminosity={pileup_luminosity}"
-        init_message += f" pileup_occupancy={pileup_occupancy}"
-        init_message += f" signal_pileup_ratio={signal_pileup_ratio}"
-        init_message += f" n_events={n_events}"
-        log.info(init_message)
+    def __setup_pulse_shape(self):
+        self.pulse_shape = PulseShape.from_yml(self.yml["setup"]["pulse_shape"])
+        self.logging.info(self.pulse_shape)
 
-        # generate pulse
-        pulse_generator = self.setup_pulse_generator(log, params["pulse_generator"])
+    def __setup_pulse_simulator(self):
+        self.pulse_generator = PulseGenerator.from_yml(self.yml["setup"]["pulse_generator"], self.pulse_shape)
+        self.logging.info(self.pulse_generator)
 
-        # setup dataset
-        train_dataset, test_dataset = self.setup_dataset(
-            log, params["dataset_generator"], pulse_generator, pileup_luminosity, pileup_occupancy, n_events)
+    def __setup_filters(self):
+        self.logging.info("Initializing filters")
 
-        # setup filters
-        filters = self.setup_filters(log, pulse_generator,
-                                  train_dataset, signal_luminosity)
-
-        # perform estimations
-        buffer = self.perform_estimations(
-            log, pulse_generator, test_dataset, filters, signal_luminosity)
-
-        return self.build_result(buffer, params)
-
-
-    def setup_pulse_generator(self, log, params):
-        pulse_size = params["pulse_size"]
-        shaper_path = params["shaper_path"]
-        deformation_level = params["deformation_level"]
-        phase_params = params["phase_params"]
-
-        debug_message = "Setup PulseGenerator with"
-        debug_message += f" pulse_size={pulse_size}"
-        debug_message += f" shaper_path={shaper_path}"
-        debug_message += f" deformation_level={deformation_level}"
-        debug_message += f" phase_params={phase_params}"
-        log.debug(debug_message)
-
-        pulse_generator = PulseGenerator(pulse_size, shaper_path)
-        pulse_generator.set_deformation_level(deformation_level)
-        pulse_generator.set_phase_generator(
-            np.random.random_integers, tuple(phase_params))
-
-        return pulse_generator
-
-
-    def setup_dataset(self, log, params, pulse_generator, pileup_luminosity, pileup_occupancy, n_events):
-        noise_params = params["noise_params"]
-
-        debug_message = "Setup DatasetGenerator with"
-        debug_message += f" noise_params={noise_params}"
-        log.debug(debug_message)
-
-        # use exponential distribution
-        pulse_generator.set_amplitude_generator(
-            np.random.exponential, (pileup_luminosity,))
-
-        dataset_generator = DatasetGenerator(pulse_generator)
-        dataset_generator.set_noise_params(noise_params[0], noise_params[1])
-
-        dataset, _ = dataset_generator.generate_windowed_samples(
-            pulse_generator.pulse_size, n_events, pileup_occupancy)
-        [train_dataset, test_dataset] = np.split(dataset, 2)
-
-        np.savetxt("train_dataset.csv", train_dataset, delimiter=" ", fmt="%.5f")
-
-        log.debug("Dataset ready")
-        return (train_dataset, test_dataset)
-
-
-    def setup_filters(self, log, pulse_generator, train_dataset, signal_luminosity):
-        log.debug("Initializing filters")
-
-        # setup generator to design filters using uniform distribution
-        pulse_generator.set_amplitude_generator(
-            np.random.random_integers, (0, 1023))
-
-        filters = {
+        self.filters = {
             "OF2": OF2(),
             "COF": COF(threshold=4.5),
-            # "SPR": Sparse(),
-            # "SCF": SparseCOF(),
-            "WHF": Wiener(train_dataset, pulse_generator)
+            "WHF": Wiener(self.train_dataset, self.pulse_generator)
         }
 
-        log.debug("Filters ready")
-        return filters
+        for key in self.filters:
+            self.logging.info(self.filters[key])
+
+        self.logging.debug("Filters ready")
 
 
-    def perform_estimations(self, log, pulse_generator, test_dataset, filters, signal_luminosity):
-        log.debug("Initializing performance test")
+    def __start_performance_test(self):
+        self.logging.info("Initializing performance test")
+
+        dataset_params = self.yml["setup"]["dataset_generator"]
+        signal_pileup_ratio = dataset_params["signal_pileup_ratio"]
+        pileup_luminosity = dataset_params["pileup_luminosity"]
+        signal_luminosity = pileup_luminosity * signal_pileup_ratio
 
         # setup generator to perform the comparison
         # using exponential distribution
-        pulse_generator.set_amplitude_generator(
-            np.random.exponential, (signal_luminosity,))
+        self.pulse_generator.set_amplitude_generator(np.random.exponential, (signal_luminosity,))
 
         buffer = {}
-        for key in filters:
-            buffer[key] = np.zeros(len(test_dataset))
+        for key in self.filters:
+            buffer[key] = np.zeros(len(self.test_dataset))
 
-        for i in range(len(test_dataset)):
-            signal, amplitude = self.generate_signal(
-                pulse_generator, test_dataset[i, :])
-            for key in filters:
-                estimation = filters[key].apply(signal)
+        for i in range(len(self.test_dataset)):
+            analog_pulse = self.pulse_generator.generate_pulse()
+            digital_samples = analog_pulse.get_digital_samples()
+            amplitude = analog_pulse.amplitude
+            signal = digital_samples + self.train_dataset[i, :]
+            for key in self.filters:
+                estimation = self.filters[key].apply(signal)
                 error = estimation - amplitude
                 buffer[key][i] = error
 
-        log.debug("Performance test done")
-        return buffer
+        self.logging.info("Performance test finished")
+        self.results_buffer = buffer
 
 
-    def generate_signal(self, pulse_generator, noise):
-        pulse, amplitude, _ = pulse_generator.generate_pulse()
-        signal = pulse + noise
-        return (signal, amplitude)
+    def __build_results(self):
+        with open(self.output_file, mode='w') as outcsv:
+            writer = csv.writer(outcsv)
+            writer.writerow(self.results_buffer.keys())
+            for i in range(len(self.test_dataset)):
+                row = [self.results_buffer[key][i] for key in self.results_buffer]
+                writer.writerow(row)
 
-
-    def build_result(self, buffer, params):
-        # get mean and std for each filter
-        pileup_luminosity = params["pileup_luminosity"]
-        pileup_occupancy = params["pileup_occupancy"]
-        signal_pileup_ratio = params["signal_pileup_ratio"]
-        phase_params = params["pulse_generator"]["phase_params"]
-        phase_module = phase_params[1]
-
-        result = []
-        for key in buffer:
-            data = buffer[key]
-            mean = np.mean(data)
-            std = np.std(data)
-            result.append({
-                "filter": key,
-                "pileup_luminosity": pileup_luminosity,
-                "pileup_occupancy": pileup_occupancy,
-                "signal_pileup_ratio": signal_pileup_ratio,
-                "phase_module": phase_module,
-                "mean": mean,
-                "std": std,
-                "data": data,
-            })
-
-        return result
+        self.logging.info(textwrap.dedent(f"""\
+          CompareFiltersTask:
+            Results ready!
+            {self.output_file}\
+        """))

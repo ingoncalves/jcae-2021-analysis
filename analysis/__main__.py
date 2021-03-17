@@ -23,7 +23,7 @@ import os
 import logging
 import time
 from .utils import read_yaml_file
-from .tasks import generate_dataset_task
+from .tasks import GenerateDatasetTask, CompareFiltersTask
 
 
 def main():
@@ -54,13 +54,18 @@ def main():
     logging.info("Input: %s", input_file)
     logging.info("Output: %s", output_path)
 
-    _, yml = read_yaml_file(input_file)
-    generate_dataset_task(yml, output_path, logging)
+    try:
+        _, yml = read_yaml_file(input_file)
+        GenerateDatasetTask(yml, output_path, logging).perform()
+        CompareFiltersTask(yml, output_path, logging).perform()
 
-    elapsed_time = time.time() - start_time
-    logging.info("Task finished after %d seconds", elapsed_time)
+        elapsed_time = time.time() - start_time
+        logging.info("Task finished after %d seconds", elapsed_time)
 
-    sys.exit(0)
+        sys.exit(0)
+    except RuntimeError as error:
+        logging.error(error)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

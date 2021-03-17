@@ -28,7 +28,8 @@ def main():
     """
 
     shape_path = "shared/cern-atlas-tilecalorimeter-pulse-shape.dat"
-    pulse_shape = PulseShape(shape_path)
+    digital_samples_time = [-75.5, -50.0, -25.0, 0.0, 25.0, 50.0, 75.0]
+    pulse_shape = PulseShape(shape_path, digital_samples_time)
 
     amplitude = 100.0
 
@@ -73,7 +74,12 @@ def plot_pulse(pulse, label):
     for time, sample in pulse:
         time_series.append(time)
         sample_series.append(sample)
-    plt.plot(time_series, sample_series, ".-", label=label)
+    plot = plt.plot(time_series, sample_series, "-", label=label)
+    plt.plot(pulse.pulse_shape.digital_samples_time, pulse.get_digital_samples(), ".",
+             color=plot[0].get_color(),
+             markersize=10,
+             markeredgewidth=1.5,
+             markeredgecolor="black")
 
 
 if __name__ == '__main__':

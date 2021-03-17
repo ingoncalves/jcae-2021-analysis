@@ -29,12 +29,21 @@ def main():
 
     # shape_path = "shared/cern-atlas-tilecalorimeter-pulse-shape.dat"
     shape_path = "/Users/guilherme/Downloads/TileCalorimeter_TileConditions_share_pulselo_physics.dat"
-    pulse_shape = PulseShape(shape_path)
+    digital_samples_time = [-75.5, -50.0, -25.0, 0.0, 25.0, 50.0, 75.0]
+    pulse_shape = PulseShape(shape_path, digital_samples_time)
+
+
+    # plot pulse shape
+    plt.plot(pulse_shape.time, pulse_shape.shape, ".-", label="pulse shape")
+
+    # plot digital samples
+    digital_samples = [pulse_shape.shape[time] for time in pulse_shape.digital_samples_index]
+    plt.plot(pulse_shape.digital_samples_time, digital_samples, ".", label="digital samples")
 
     plt.grid(zorder=0, linestyle='--')
-    plt.plot(pulse_shape.time, pulse_shape.shape, ".-")
     plt.xlabel("time", horizontalalignment='right', x=1.0, zorder=3)
     plt.ylabel("ADC", horizontalalignment='right', y=1.0)
+    plt.legend()
     plt.show()
 
 

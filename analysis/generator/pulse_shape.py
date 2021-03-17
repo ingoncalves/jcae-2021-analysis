@@ -25,15 +25,18 @@ import numpy as np
 class PulseShape():
     """ Pulse generator """
 
-    def __init__(self, shape_path):
+    def __init__(self, shape_path, digital_samples_time = []):
         """ Default constructor """
         self.shape_path = shape_path
+        self.digital_samples_time = digital_samples_time
         self.read_pulse_shape()
 
     @classmethod
     def from_yml(cls, yml):
         """ Constructor from YML """
-        instance = cls(yml["path"])
+        path = yml["path"]
+        digital_samples_time = yml["digital_samples_time"]
+        instance = cls(path, digital_samples_time)
         return instance
 
     def read_pulse_shape(self):
@@ -51,9 +54,14 @@ class PulseShape():
         self.time_origin_index = int(np.where(self.time == .0)[0][0])
         self.resolution = self.time[1] - self.time[0]
 
+        # digital indexes
+        self.digital_samples_index = np.in1d(self.time, self.digital_samples_time).nonzero()[0]
+
     def __str__(self):
         return textwrap.dedent(f"""\
           PulseShape:
+            digital_samples_index = {self.digital_samples_index}
+            digital_samples_time = {self.digital_samples_time}
             resolution = {self.resolution}
             shape_path = {self.shape_path}
             size = {self.size}

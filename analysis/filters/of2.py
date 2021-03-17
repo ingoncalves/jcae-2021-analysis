@@ -19,6 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from textwrap import dedent
 import numpy as np
 from .base import FilterBase
 
@@ -27,7 +28,7 @@ class OF2(FilterBase):
     """ OF2 filter """
 
     def __init__(self):
-        super(OF2, self).__init__(7)
+        super().__init__(7)
         self.project_filter_weights()
 
     def apply(self, pulse):
@@ -81,3 +82,10 @@ class OF2(FilterBase):
         self.weights = np.zeros(self.filter_size)
         for i in range(self.filter_size):
             self.weights[i] = vec_w[i]
+
+    def __str__(self):
+        return dedent(f"""\
+          OF2 Filter:
+            size = {self.filter_size}
+            weights = {", ".join("%.5f" % w for w in self.weights)}\
+        """)

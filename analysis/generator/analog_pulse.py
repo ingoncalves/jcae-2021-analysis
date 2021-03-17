@@ -36,22 +36,25 @@ class AnalogPulse():
         self.deformation_level = deformation_level
         self.__i = 0
 
-    def get_sample(self, index):
+    def get_sample(self, time_index):
         """
         get a sample by index
         """
-        shape_sample = self.pulse_shape.shape[index]
+        sample_index = self.__index_with_phase_deviation(time_index)
+        if sample_index < 0 or sample_index >= self.pulse_shape.size:
+            return 0
+
+        shape_sample = self.pulse_shape.shape[sample_index]
         deformation = self.__random_deformation(shape_sample)
         noise = self.__random_noise()
         sample = self.amplitude * (shape_sample + deformation) + self.pedestal + noise
         return sample
 
-    def with_phase(self, phase):
+    def get_digital_samples(self):
         """
-        returns an iterator of samples with a phase deviation
+        get the digital samples with phase deviation
         """
-        self.phase = phase
-        return iter(self)
+        return [self.get_sample(time_index) for time_index in self.pulse_shape.digital_samples_index]
 
     def __iter__(self):
         self.__i = 0
@@ -59,18 +62,13 @@ class AnalogPulse():
 
     def __next__(self):
         if self.__i < self.pulse_shape.size:
-            time_index = self.__i
-            sample_index = self.__index_with_phase_deviation(time_index)
-            self.__i += 1
-
-            if sample_index < 0 or sample_index >= self.pulse_shape.size:
-                return self.__next__()
-
             # sample
-            sample = self.get_sample(sample_index)
+            sample = self.get_sample(self.__i)
 
             # time
-            time = self.pulse_shape.time[time_index]
+            time = self.pulse_shape.time[self.__i]
+
+            self.__i += 1
 
             return (time, sample)
 

@@ -25,46 +25,70 @@ import numpy as np
 from ..generator import PulseShape, DatasetGenerator, PulseGenerator
 
 
-def generate_dataset_task(yml, output_path, logging):
-    output_file = output_path + "/dataset.csv"
-    if os.path.exists(output_file):
-        logging.info(textwrap.dedent(f"""\
+class GenerateDatasetTask():
+    """ Dataset Generator Task """
+
+    def __init__(self, yml, output_path, logging):
+        self.yml = yml
+        self.output_file = output_path + "/dataset.csv"
+        self.logging = logging
+        self.pulse_shape = None
+        self.pulse_generator = None
+        self.dataset = None
+
+        dataset_params = yml["setup"]["dataset_generator"]
+        self.n_events = dataset_params["n_events"]
+        self.pileup_luminosity = dataset_params["pileup_luminosity"]
+        self.pileup_occupancy = dataset_params["pileup_occupancy"]
+        self.sampling_rate = dataset_params["sampling_rate"]
+        self.signal_pileup_ratio = dataset_params["signal_pileup_ratio"]
+        self.window_size = dataset_params["window_size"]
+
+    def perform(self):
+        """ Call dataset generator """
+
+        self.logging.info(textwrap.dedent(f"""\
           GenerateDatasetTasks:
-            Dataset already exists. Skipping!
-            {output_file}\
+            n_events = {self.n_events}
+            pileup_luminosity = {self.pileup_luminosity}
+            pileup_occupancy = {self.pileup_occupancy}
+            sampling_rate = {self.sampling_rate}
+            signal_pileup_ratio = {self.signal_pileup_ratio}
+            window_size = {self.window_size}\
         """))
-        return
 
-    dataset_params = yml["setup"]["dataset_generator"]
-    n_events = dataset_params["n_events"]
-    pileup_luminosity = dataset_params["pileup_luminosity"]
-    pileup_occupancy = dataset_params["pileup_occupancy"]
-    sampling_rate = dataset_params["sampling_rate"]
-    signal_pileup_ratio = dataset_params["signal_pileup_ratio"]
-    window_size = dataset_params["window_size"]
 
-    pulse_shape = PulseShape.from_yml(yml["setup"]["pulse_shape"])
-    logging.info(pulse_shape)
+        if os.path.exists(self.output_file):
+            self.logging.info(textwrap.dedent(f"""\
+              GenerateDatasetTasks:
+                Dataset already exists. Skipping!
+                {self.output_file}\
+            """))
+            return
 
-    pulse_generator = PulseGenerator.from_yml(
-        yml["setup"]["pulse_generator"], pulse_shape)
-    pulse_generator.set_amplitude_generator(
-        np.random.exponential, (pileup_luminosity,))
-    logging.info(pulse_generator)
+        self.__setup_pulse_shape()
+        self.__setup_pulse_generator()
+        self.__generate_dataset()
+        self.__write_dataset_to_file()
 
-    dataset_generator = DatasetGenerator(pulse_generator)
-    logging.info(textwrap.dedent(f"""\
-      GenerateDatasetTasks:
-        n_events = {n_events}
-        pileup_luminosity = {pileup_luminosity}
-        pileup_occupancy = {pileup_occupancy}
-        sampling_rate = {sampling_rate}
-        signal_pileup_ratio = {signal_pileup_ratio}
-        window_size = {window_size}\
-    """))
+        self.logging.info(textwrap.dedent(f"""\
+          GenerateDatasetTasks:
+            Dataset ready!
+            {self.output_file}\
+        """))
 
-    dataset, _ = dataset_generator.generate_windowed_samples(
-        window_size, sampling_rate, n_events, pileup_occupancy)
+    def __setup_pulse_shape(self):
+        self.pulse_shape = PulseShape.from_yml(self.yml["setup"]["pulse_shape"])
+        self.logging.info(self.pulse_shape)
 
-    np.savetxt(output_file, dataset, delimiter=" ", fmt="%.5f")
-    logging.debug("Dataset ready")
+    def __setup_pulse_generator(self):
+        self.pulse_generator = PulseGenerator.from_yml(self.yml["setup"]["pulse_generator"], self.pulse_shape)
+        self.pulse_generator.set_amplitude_generator(np.random.exponential, (self.pileup_luminosity,))
+        self.logging.info(self.pulse_generator)
+
+    def __generate_dataset(self):
+        dataset_generator = DatasetGenerator(self.pulse_generator)
+        self.dataset, _ = dataset_generator.generate_windowed_samples(self.window_size, self.sampling_rate, self.n_events, self.pileup_occupancy)
+
+    def __write_dataset_to_file(self):
+        np.savetxt(self.output_file, self.dataset, delimiter=" ", fmt="%.5f")

@@ -19,6 +19,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from textwrap import dedent
+import copy
 import numpy as np
 
 from .base import FilterBase
@@ -28,9 +30,9 @@ class Wiener(FilterBase):
     """ Wiener filter """
 
     def __init__(self, train_dataset, pulse_generator, using_bias=True):
-        super(Wiener, self).__init__(pulse_generator.pulse_size)
+        super().__init__(train_dataset.shape[1])
         self.dataset = train_dataset
-        self.pulse_generator = pulse_generator
+        self.pulse_generator = copy.deepcopy(pulse_generator)
         self.using_bias = using_bias
         self.project_filter_weights()
 
@@ -48,6 +50,9 @@ class Wiener(FilterBase):
         calculates the Wiener weights
         """
 
+        # setup generator to design filters using uniform distribution
+        self.pulse_generator.set_amplitude_generator(np.random.random_integers, (0, 1023))
+
         n_samples = self.dataset.shape[0]
         n_cols = self.filter_size + 1 if self.using_bias else self.using_bias
 
@@ -59,11 +64,13 @@ class Wiener(FilterBase):
         for i, noise in enumerate(self.dataset):
 
             # generate known pulse
-            pulse, amplitude, _ = self.pulse_generator.generate_pulse()
+            analog_pulse = self.pulse_generator.generate_pulse()
+            digital_samples = analog_pulse.get_digital_samples()
+            amplitude = analog_pulse.amplitude
 
             # sum the noise to the knows pulse
             for j in range(self.filter_size):
-                mat_x[i][j] = noise[j] + pulse[j]
+                mat_x[i][j] = noise[j] + digital_samples[j]
 
             # additional element
             if self.using_bias:
@@ -90,3 +97,10 @@ class Wiener(FilterBase):
             vec_p[i] = summ / n_samples
 
         self.weights = np.linalg.solve(mat_r, vec_p)
+
+    def __str__(self):
+        return dedent(f"""\
+          Wiener Filter:
+            size = {self.filter_size}
+            weights = {", ".join("%.5f" % w for w in self.weights)}\
+        """)

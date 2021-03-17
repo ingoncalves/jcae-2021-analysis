@@ -19,6 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from textwrap import dedent
 import numpy as np
 from .base import FilterBase
 
@@ -93,3 +94,9 @@ class COF(FilterBase):
         weights = np.linalg.solve(mat_aux, mat_d)
 
         return weights, target_amplitude_index
+
+    def __str__(self):
+        return dedent(f"""\
+          COF Filter:
+            size = {self.filter_size}\
+        """)
