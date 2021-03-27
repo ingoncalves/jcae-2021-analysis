@@ -38,7 +38,7 @@ An `setup.yml` example could be such as:
 
 Then, you can execute the simulation as:
 
-    python3 -m analysis cases/moderate_occupancy/setup.yml
+    python3 -m analysis cases/moderate_occupancy/setup.yaml
 
 ## Execute Examples
 
