@@ -1,0 +1,31 @@
+setup:
+    pulse_shape:
+        path: "shared/unipolar-pulse-shape.dat"
+        digital_samples_time: [-75.5, -50.0, -25.0, 0.0, 25.0, 50.0, 75.0]
+    pulse_generator:
+        deformation_level: 0.01
+        noise_mean: 0
+        noise_sigma: 1.5
+        pedestal: 0
+        phase_generator: "random_integers"
+        phase_params: [-4, 4]
+    dataset_generator:
+        n_events: 1000000
+        pileup_occupancy: 0.5
+        pileup_luminosity: 30.0
+        sampling_rate: 25.0
+        signal_pileup_ratio: 1
+        window_size: 7
+    filters:
+        mae:
+            threshold: 4.5
+        wiener:
+            pulse_generator:
+                deformation_level: 0.0
+                noise_mean: 0
+                noise_sigma: 0
+                pedestal: 0
+                amplitude_generator: "random_integers"
+                amplitude_params: [0, 1023]
+                phase_generator: "random_integers"
+                phase_params: [-8.48, 8.48]
